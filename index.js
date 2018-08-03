@@ -4,6 +4,8 @@ var fs = require('fs-path');
 var glob = require('glob');
 var AxeBuilder = require('axe-webdriverjs');
 var WebDriver = require('selenium-webdriver');
+var chrome = require('selenium-webdriver/chrome');
+var firefox = require('selenium-webdriver/firefox');
 var Promise = require('promise');
 var fileUrl = require('file-url');
 var reporter = require('./lib/reporter');
@@ -11,28 +13,33 @@ var chalk = require('chalk');
 var request = require('then-request');
 var PluginError = require('plugin-error');
 require('chromedriver');
+require('geckodriver');
 
 module.exports = function (customOptions) {
 
 	var defaultOptions = {
+		browser: 'chrome',
+		browserArguments: '',
 		errorOnViolation: false,
 		folderOutputReport: 'aXeReports',
-		headless: false,
 		saveOutputIn: '',
 		scriptTimeout: null,
 		showOnlyViolations: false,
 		tags: null,
 		threshold: 0,
 		urls: [],
-		verbose: false
+		verbose: false,
 	};
 
 	var violationsCount = 0;
 	var options = customOptions ? Object.assign(defaultOptions, customOptions) : defaultOptions;
-	var chromeCapabilities = WebDriver.Capabilities.chrome();
-	var chromeOptions = options.headless ? { 'args': ['--headless'] } : {};
-	chromeCapabilities.set('chromeOptions', chromeOptions);
-	var driver = new WebDriver.Builder().withCapabilities(chromeCapabilities).build();
+	var driver = new WebDriver.Builder().forBrowser(options.browser);
+	if (options.browser === 'chrome' && options.browserArguments) {
+		driver = driver.setChromeOptions(new chrome.Options().addArguments(options.browserArguments))
+	} else if (options.browser === 'firefox' && options.browserArguments) {
+		driver = driver.setFirefoxOptions(new firefox.Options().addArguments(options.browserArguments))
+	}
+	driver = driver.build();
 	if (typeof options.scriptTimeout === 'number') {
 		driver.manage().timeouts().setScriptTimeout(options.scriptTimeout);
 	}
@@ -164,7 +171,7 @@ module.exports = function (customOptions) {
 							++violationsCount;
 						}
 						if (options.verbose) {
-							console.log(chalk.cyan('Analyisis finished for: ') + url);
+							console.log(chalk.cyan('Analysis finished for: ') + url);
 						}
 						resolve(results);
 					});
